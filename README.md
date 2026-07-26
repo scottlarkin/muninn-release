@@ -34,40 +34,93 @@ Closed-source software. See [LICENSE](LICENSE).
 
 ## Requirements
 
-| | |
-|---|---|
-| **Docker** | For the local neo4j + Ollama stack. Anything Docker-compatible works. |
-| **Disk** | ~1 GB for images, ~6 GB more if you use local Ollama models. |
-| **RAM** | neo4j is configured for a 1 GB heap; 8 GB total is comfortable. |
-| **macOS** | 12 (Monterey) or newer, Apple Silicon or Intel. |
-| **Linux** | glibc 2.34 or newer — Debian 12+, Ubuntu 22.04+, RHEL 9+. |
-| **Go** | **Not required.** muninn ships as a single compiled binary. |
+Always: **macOS 12+** (Apple Silicon or Intel) or **Linux with glibc 2.34+**
+(Debian 12+, Ubuntu 22.04+, RHEL 9+).
 
-Optionally an Anthropic API key, for higher-quality lesson distillation. Without
-one, set `llm.provider = "ollama"` to stay fully local.
+Everything else depends on how much you run yourself. muninn needs three things —
+a graph, an embedder, and an LLM — and each can be local or remote, so the
+footprint ranges from "a 15 MB binary" to "a small workstation".
+
+| | Fully remote | Local graph, remote models | Fully local |
+|---|---|---|---|
+| **Graph** | your neo4j / Aura | Docker neo4j | Docker neo4j |
+| **Embeddings** | remote API | remote API | Ollama |
+| **LLM** | remote API | remote API | Ollama |
+| **Docker** | not needed | yes | yes |
+| **Disk** | ~15 MB | ~1 GB | ~15 GB |
+| **RAM** | negligible | ~2 GB | 16 GB comfortable |
+| **Cost** | per-token + hosting | per-token | free |
+| **Privacy** | data leaves your machine | prompts leave your machine | nothing leaves |
+
+Where the disk goes: the binary is 15 MB. The neo4j image is ~1 GB. The Ollama
+image is ~9 GB on its own — it bundles GPU runtimes — plus ~0.6 GB of embedding
+models and ~4.7 GB for the default local LLM (`qwen2.5-coder:7b`).
+
+RAM: neo4j is configured for a 1 GB heap. A 7B local model needs roughly 5 GB
+more while it runs, which is what pushes the fully-local column up.
+
+> **On macOS, prefer a native Ollama** over the Docker one — the
+> [app or `brew install ollama`](https://ollama.com/download) is a fraction of
+> the size and gets GPU acceleration, which the containerised version does not.
+> The installer will detect it: choose "I already have Ollama running".
+
+The installer asks which of these you want and only starts what it needs.
+Mixing is normal — a local graph with a hosted LLM is a good default, since the
+graph holds your memory and the LLM only sees individual prompts.
 
 ## Install
 
-### Direct download
+```sh
+curl -fsSL https://raw.githubusercontent.com/scottlarkin/muninn-release/main/install.sh | bash
+```
 
-Grab the archive for your platform from the
-[latest release](https://github.com/scottlarkin/muninn-release/releases/latest),
-then:
+It detects your platform and verifies the download against its checksum, then
+asks how you want to reach each of the three dependencies:
+
+| | Options |
+|---|---|
+| **Memory graph** (neo4j) | run it in Docker · use one you already run · a remote/Aura instance |
+| **Embeddings** | Ollama in Docker · an Ollama you already run (it asks the port) · a remote OpenAI-compatible endpoint |
+| **LLM** (distils lessons) | Anthropic · a local Ollama model · a remote OpenAI-compatible endpoint · skip |
+
+It only starts the containers you actually need, so it will not collide with an
+Ollama or neo4j you already have running. It writes the matching config for you,
+and asks before starting anything or touching `~/.claude`.
+
+`--help` lists the flags (`--no-stack`, `--no-claude`, `--prefix`, `--yes`).
+
+Using an agent? Point it at
+[for-agents.md](https://github.com/scottlarkin/muninn-release/blob/main/for-agents.md)
+and it can do the install for you.
+
+<details>
+<summary><b>Manual install</b> — if you would rather not pipe a script to bash</summary>
+
+If you would rather see every step, pick your platform — `darwin_arm64` (Apple
+Silicon), `darwin_amd64` (Intel Mac), `linux_amd64`, or `linux_arm64`:
 
 ```sh
-tar -xzf muninn_*_darwin_arm64.tar.gz
+# Latest tag from https://github.com/scottlarkin/muninn-release/releases/latest
+VERSION=v0.1.2
+PLATFORM=darwin_arm64
+
+curl -fsSL -o muninn.tar.gz \
+  "https://github.com/scottlarkin/muninn-release/releases/download/${VERSION}/muninn_${VERSION}_${PLATFORM}.tar.gz"
+tar -xzf muninn.tar.gz
 sudo mv muninn /usr/local/bin/
+muninn version
 ```
 
-Verify the download against `checksums.txt`:
+Verify against `checksums.txt` on the
+[release](https://github.com/scottlarkin/muninn-release/releases/latest):
 
 ```sh
-shasum -a 256 muninn_*.tar.gz
+shasum -a 256 muninn.tar.gz
 ```
 
-> **macOS, browser downloads only.** A file downloaded through a browser is
-> quarantined by Gatekeeper and will refuse to run. Homebrew and `curl` are not
-> affected. To clear it:
+> **macOS: use `curl`, not your browser.** Gatekeeper quarantines files
+> downloaded through a browser, and the binary will refuse to run —
+> `curl` is not affected. If you did download it through a browser:
 >
 > ```sh
 > xattr -dr com.apple.quarantine /usr/local/bin/muninn
@@ -75,16 +128,7 @@ shasum -a 256 muninn_*.tar.gz
 >
 > The binary is signed ad-hoc but not notarised.
 
-### Homebrew
-
-Not available yet. A tap is planned, at which point this becomes:
-
-```sh
-brew install scottlarkin/muninn/muninn
-```
-
-Homebrew is also the path that avoids the Gatekeeper quarantine above, since it
-downloads with `curl` rather than a browser.
+</details>
 
 ## Set up
 
@@ -156,7 +200,7 @@ when you want to ask directly.
 | Skill | Command | What it does |
 |---|---|---|
 | `/muninn-recall` | `muninn recall --window 7d` | What you worked on over a time window, or a file's history |
-| `/muninn-search` | `muninn recall-test "<query>"` | Search memory with your own phrasing |
+| `/muninn-search` | `muninn search "<query>"` | Search memory with your own phrasing |
 | `/muninn-remember` | `muninn remember "<fact>"` | Save a fact, preference or decision durably |
 | `/muninn-dead-end` | `muninn remember --dead-end "<what failed>"` | Record an approach that did not work |
 | `/muninn-forget` | `muninn forget "<phrase>"` | Delete memories, with a preview and confirmation |
@@ -167,7 +211,7 @@ when you want to ask directly.
 | `/muninn-index` | `muninn index` | Build or refresh the code graph |
 | `/muninn-entities` | `muninn entities` | Browse the entity vocabulary |
 | `/muninn-view` | `muninn view` | The memory graph for this session |
-| `/muninn-recall-test` | `muninn recall-test "<prompt>"` | Preview exactly what recall would inject |
+| `/muninn-recall-test` | `muninn search "<prompt>"` | Preview exactly what recall would inject |
 
 `muninn --help` lists everything.
 
@@ -188,31 +232,138 @@ latter two.
 `muninn config show` prints the full effective config with secrets redacted.
 `muninn config init` writes a documented starter file.
 
+**[config.md](config.md) documents every setting** — all 162 of them, with defaults.
+You will not need most of it; start from the examples below.
+
 A project `.muninn.toml` is treated as untrusted — only a small allowlist of
 tuning keys is honoured from it, never credentials or endpoints, so cloning a
 repository cannot redirect your memory or leak your keys.
 
-### Useful settings
+### Example configs
+
+`install.sh` writes one of these for you. They are here for reference, and for
+when you want to change setup later. Anything not listed keeps its default.
+
+<details>
+<summary><b>Everything local</b> — free, nothing leaves your machine</summary>
+
+The defaults already point at a local neo4j and Ollama, so this is all you need.
+The password is the one `muninn stack init` generated.
 
 ```toml
-[recall]
-# Skills-only mode: stop injecting context into prompts, but keep recording
-# and lesson promotion.
-inject = false
+[neo4j]
+password = "the-password-stack-init-generated"
 
 [llm]
-# Stay entirely local — no hosted API calls.
 provider = "ollama"
 ```
 
-### Turning it off
+Distillation runs on `qwen2.5-coder:7b` locally. Slower and a little blunter than
+a hosted model, but it costs nothing and no prompt ever leaves the machine.
+</details>
 
-```sh
-MUNINN_DISABLE=1
+<details>
+<summary><b>Local graph and embeddings, hosted LLM</b> — recommended default</summary>
+
+Your memory graph and the embeddings of it stay local; only the text being
+distilled into a lesson goes to the API.
+
+```toml
+[neo4j]
+password = "the-password-stack-init-generated"
+
+[llm]
+provider = "anthropic"
+anthropic_api_key = "env:ANTHROPIC_API_KEY"
 ```
 
-Set in your environment, every hook becomes a silent no-op. The fastest way to
-rule muninn out while debugging something else.
+`env:` reads the variable at run time rather than copying the secret into this
+file — worth preferring for anything sensitive.
+</details>
+
+<details>
+<summary><b>Everything remote</b> — no Docker, ~15 MB on disk</summary>
+
+```toml
+[neo4j]
+uri = "neo4j+s://xxxxxxxx.databases.neo4j.io"
+username = "neo4j"
+password = "env:NEO4J_PASSWORD"
+
+[embed]
+provider = "openai"
+base_url = "https://api.openai.com"
+api_key = "env:OPENAI_API_KEY"
+
+[embed.spaces.text]
+model = "text-embedding-3-small"
+dim = 1536
+asymmetric = true
+
+[embed.spaces.code]
+model = "text-embedding-3-small"
+dim = 1536
+asymmetric = false
+
+[llm]
+provider = "openai"
+base_url = "https://api.openai.com"
+api_key = "env:OPENAI_API_KEY"
+model_haiku = "gpt-4o-mini"
+model_sonnet = "gpt-4o"
+```
+
+Two things to get right here:
+
+- **`dim` must match your model, and must be set before `muninn schema init`.**
+  It is baked into the graph's vector indexes at creation and cannot be changed
+  afterwards without a fresh database. `text-embedding-3-small` is 1536;
+  `text-embedding-3-large` is 3072.
+- Both spaces use the same model above, because most endpoints do not serve a
+  code-specific embedding model. If yours does, point `spaces.code` at it.
+
+`base_url` is any OpenAI-compatible endpoint, so this shape also covers a
+gateway, a local vLLM, or an internal proxy.
+</details>
+
+### Turning off auto-recall in Claude Code
+
+muninn injects relevant memory into every prompt by default. To keep it learning
+but stop it adding anything to your prompts:
+
+```toml
+[recall]
+inject = false
+```
+
+or, per-shell:
+
+```sh
+export MUNINN_RECALL__INJECT=false
+```
+
+What still happens with `inject = false`:
+
+- prompts and responses are still **recorded**, so the graph keeps growing
+- lessons are still **promoted and distilled** from your sessions
+- `muninn search`, `muninn recall` and every skill still work
+
+What stops: the `UserPromptSubmit` hook no longer returns context, and the
+`PreToolUse` file-context hook returns nothing. In other words muninn becomes
+opt-in — you ask it, it doesn't volunteer.
+
+This is useful when you want memory available on demand without spending context
+window on it, or while you are judging whether what it injects is worth having.
+
+### Turning it off completely
+
+```sh
+export MUNINN_DISABLE=1
+```
+
+Every hook becomes a silent no-op — nothing is recorded, nothing is injected,
+nothing is distilled. The fastest way to rule muninn out while debugging
+something else. Unlike `inject = false`, this stops the graph growing too.
 
 ## Privacy
 
@@ -227,6 +378,9 @@ rule muninn out while debugging something else.
   by default.
 
 ## Troubleshooting
+
+<details>
+<summary>Common problems and fixes</summary>
 
 **`doctor` says neo4j is unreachable.** Confirm the stack is up
 (`docker ps`) and that the password in your config matches the one in
@@ -249,6 +403,8 @@ quarantine note under [Install](#direct-download).
 
 **Linux: `GLIBC_2.xx not found`.** Your distribution is older than the build
 floor. Debian 12+, Ubuntu 22.04+ or RHEL 9+ are required.
+
+</details>
 
 ## Support
 
