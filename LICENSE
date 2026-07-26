@@ -1,0 +1,86 @@
+muninn — End User Licence Agreement
+Copyright (c) 2026 Scott Larkin. All rights reserved.
+
+NOT LEGAL ADVICE: this document was drafted as a starting point and has not been
+reviewed by a lawyer. Have it reviewed before you rely on it commercially, and
+fill in the bracketed placeholders in section 11.
+
+By downloading, installing, or using the muninn software ("the Software"), you
+agree to this Agreement. If you do not agree, do not install or use the Software.
+
+1. LICENCE GRANT
+   Subject to your compliance with this Agreement, the copyright holder grants
+   you a personal, non-exclusive, non-transferable, revocable licence to install
+   and use the Software in object-code form, on any number of machines you own or
+   control, for your own internal or personal purposes.
+
+2. RESERVATION OF RIGHTS
+   The Software is licensed, not sold. The copyright holder retains all right,
+   title, and interest in the Software, including all intellectual property
+   rights. No rights are granted other than those expressly stated here. The
+   source code of the Software is not licensed to you.
+
+3. RESTRICTIONS
+   Except to the extent this restriction is unenforceable under applicable law,
+   you may not:
+   (a) redistribute, sell, rent, lease, sublicense, or otherwise make the
+       Software available to any third party;
+   (b) reverse engineer, decompile, or disassemble the Software, or attempt to
+       derive its source code;
+   (c) modify the Software or create derivative works of it;
+   (d) remove or obscure any copyright, licence, or attribution notice; or
+   (e) use the Software to build a competing product.
+
+4. THIRD-PARTY COMPONENTS
+   The Software includes open-source components licensed under their own terms.
+   Those components are listed, with their licences, in the THIRD_PARTY.md file
+   distributed with the Software. Nothing in this Agreement limits your rights
+   under those licences with respect to those components.
+
+5. YOUR DATA
+   The Software stores the memory graph it builds in a database that you provide
+   and control, and sends prompts only to the model endpoints you configure. The
+   copyright holder does not collect, transmit, or receive your data, and the
+   Software contains no analytics or telemetry that reports off your machine. You
+   are responsible for the security of your own database, credentials, and any
+   third-party model provider you configure.
+
+6. FEEDBACK
+   If you send feedback or bug reports, you grant the copyright holder a
+   perpetual, royalty-free licence to use them without obligation to you. Do not
+   send confidential information or credentials in a bug report.
+
+7. NO WARRANTY
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. The Software is not
+   intended for use in any environment where its failure could lead to death,
+   personal injury, or severe physical or environmental damage.
+
+8. LIMITATION OF LIABILITY
+   TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL THE
+   COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY,
+   WHETHER IN CONTRACT, TORT, OR OTHERWISE, ARISING FROM OR IN CONNECTION WITH
+   THE SOFTWARE OR ITS USE, INCLUDING ANY LOSS OF DATA OR LOST PROFITS. Nothing
+   in this Agreement excludes or limits liability that cannot lawfully be
+   excluded or limited, including liability for death or personal injury caused
+   by negligence, or for fraud.
+
+9. NO SUPPORT OBLIGATION
+   The Software is provided without any obligation to supply support, updates, or
+   maintenance, unless separately agreed in writing.
+
+10. TERM AND TERMINATION
+    This Agreement applies until terminated. It terminates automatically if you
+    breach it. On termination you must stop using the Software and delete all
+    copies. Sections 2, 3, 6, 7, 8, and 11 survive termination.
+
+11. GOVERNING LAW
+    This Agreement is governed by the laws of [JURISDICTION], and the courts of
+    [JURISDICTION] have exclusive jurisdiction, without prejudice to any
+    mandatory consumer protections available to you in your place of residence.
+
+12. ENTIRE AGREEMENT AND SEVERABILITY
+    This Agreement is the entire agreement between you and the copyright holder
+    regarding the Software. If any provision is held unenforceable, the remaining
+    provisions remain in full force.
