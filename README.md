@@ -101,7 +101,7 @@ https://github.com/user-attachments/assets/545e24c7-45be-43cb-9e1e-c5eedad3c8bd
 ## Quick start
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/scottlarkin/muninn-release/main/install.sh | bash
+curl -fsSL https://muninnai.dev/install.sh | bash
 ```
 
 The installer detects your platform, verifies the download against its

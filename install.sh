@@ -2,8 +2,8 @@
 # install.sh: one-command install for muninn — download, verify, set up the local
 # stack, wire Claude Code.
 #
-# usage:  curl -fsSL https://raw.githubusercontent.com/scottlarkin/muninn-release/main/install.sh | bash
-#         curl -fsSL .../install.sh | bash -s -- --yes --no-stack
+# usage:  curl -fsSL https://muninnai.dev/install.sh | bash
+#         curl -fsSL https://muninnai.dev/install.sh | bash -s -- --yes --no-stack
 #
 # Design notes, because a curl|sh script is a trust ask and should be readable:
 #

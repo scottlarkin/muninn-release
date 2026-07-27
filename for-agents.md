@@ -23,7 +23,7 @@ Do not run the installer with `--yes` unless the user has said yes to all three.
 ## Fast path
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/scottlarkin/muninn-release/main/install.sh | bash
+curl -fsSL https://muninnai.dev/install.sh | bash
 ```
 
 It asks how to reach each of the three dependencies (graph, embeddings, LLM):
