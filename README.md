@@ -4,6 +4,8 @@
 
 # muninn
 
+[![Latest release](https://img.shields.io/github/v/release/scottlarkin/muninn-release?label=release)](https://github.com/scottlarkin/muninn-release/releases/latest)
+
 Persistent memory for coding agents. muninn records what you and your agent
 work on, distils durable lessons from it, and injects the relevant parts back
 into every prompt automatically — so you stop re-explaining your codebase,
@@ -16,7 +18,7 @@ reported anywhere.
 **Three ways to use it:**
 
 - **With Claude Code** — hooks record and inject automatically, nothing to run.
-  This is the reference integration and what the setup below covers.
+  This is the reference integration.
 - **As a plain CLI** — `muninn search`, `recall`, `remember`, `similar`,
   `impact`, `risky`, `open`. No agent required; useful on its own.
 - **With another agent** — the integration points are ordinary subcommands that
@@ -42,50 +44,48 @@ Closed-source software. See [LICENSE](LICENSE).
   entities and linked, so recall can follow relationships rather than just
   matching text.
 
-## Requirements
+Not a vector dump of past chats. Lessons are scored by outcomes, dead ends are
+first-class, and the code graph sits beside session memory so recall can follow
+structure as well as text.
 
-Always: **macOS 12+** (Apple Silicon or Intel) or **Linux with glibc 2.34+**
-(Debian 12+, Ubuntu 22.04+, RHEL 9+).
+## Who it's for
 
-Everything else depends on how much you run yourself. muninn needs three things —
-a graph, an embedder, and an LLM — and each can be local or remote, so the
-footprint ranges from "a 15 MB binary" to "a small workstation".
+- Claude Code or CLI users who re-explain conventions and architecture every
+  session, or watch the agent re-try approaches that already failed.
+- Anyone who wants code-aware tools (`similar`, `impact`, `risky`) on top of
+  memory, with the graph under their control.
 
-| | Fully remote | Local graph, remote models | Fully local |
-|---|---|---|---|
-| **Graph** | your neo4j / Aura | Docker neo4j | Docker neo4j |
-| **Embeddings** | remote API | remote API | Ollama |
-| **LLM** | remote API | remote API | Ollama |
-| **Docker** | not needed | yes | yes |
-| **Disk** | ~15 MB | ~1 GB | ~15 GB |
-| **RAM** | negligible | ~2 GB | 16 GB comfortable |
-| **Cost** | per-token + hosting | per-token | free |
-| **Privacy** | data leaves your machine | prompts leave your machine | nothing leaves |
+Not a fit if you only want chat history, need Windows, or want zero-ops cloud
+memory with no local graph. Project instruction files still matter; muninn
+complements them rather than replacing them.
 
-Where the disk goes: the binary is 15 MB. The neo4j image is ~1 GB. The Ollama
-image is ~9 GB on its own — it bundles GPU runtimes — plus ~0.6 GB of embedding
-models and ~4.7 GB for the default local LLM (`qwen2.5-coder:7b`).
+## See it work
 
-RAM: neo4j is configured for a 1 GB heap. A 7B local model needs roughly 5 GB
-more while it runs, which is what pushes the fully-local column up.
+CLI demos below. With Claude Code, the same memory is injected into prompts
+automatically — no command to remember. If a player does not show, use the
+link under each clip.
 
-> **On macOS, prefer a native Ollama** over the Docker one — the
-> [app or `brew install ollama`](https://ollama.com/download) is a fraction of
-> the size and gets GPU acceleration, which the containerised version does not.
-> The installer will detect it: choose "I already have Ollama running".
+**`muninn recall`** — what you worked on, reconstructed from the graph:
 
-The installer asks which of these you want and only starts what it needs.
-Mixing is normal — a local graph with a hosted LLM is a good default, since the
-graph holds your memory and the LLM only sees individual prompts.
+<video src="https://raw.githubusercontent.com/scottlarkin/muninn-release/main/assets/demo-recall.mp4" controls muted loop width="700"></video>
 
-## Install
+<!-- Fallback for renderers without video support (and for the tarball copy). -->
+[▶ recall demo](https://raw.githubusercontent.com/scottlarkin/muninn-release/main/assets/demo-recall.mp4)
+
+**`muninn open`** — describe the code you want and it opens the files:
+
+<video src="https://raw.githubusercontent.com/scottlarkin/muninn-release/main/assets/demo-open.mp4" controls muted loop width="700"></video>
+
+[▶ open demo](https://raw.githubusercontent.com/scottlarkin/muninn-release/main/assets/demo-open.mp4)
+
+## Quick start
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/scottlarkin/muninn-release/main/install.sh | bash
 ```
 
-It detects your platform and verifies the download against its checksum, then
-asks how you want to reach each of the three dependencies:
+The installer detects your platform, verifies the download against its
+checksum, and asks how you want each dependency:
 
 | | Options |
 |---|---|
@@ -93,26 +93,35 @@ asks how you want to reach each of the three dependencies:
 | **Embeddings** | Ollama in Docker · an Ollama you already run (it asks the port) · a remote OpenAI-compatible endpoint |
 | **LLM** (distils lessons) | Anthropic · a local Ollama model · a remote OpenAI-compatible endpoint · skip |
 
-It only starts the containers you actually need, so it will not collide with an
-Ollama or neo4j you already have running. It writes the matching config for you,
-and asks before starting anything or touching `~/.claude`.
+It only starts the containers you actually need, writes the matching config,
+initialises the graph schema, and can wire Claude Code hooks — each step only
+after you confirm. Flags: `--no-stack`, `--no-claude`, `--prefix`, `--yes`
+(`install.sh --help`).
 
-`--help` lists the flags (`--no-stack`, `--no-claude`, `--prefix`, `--yes`).
-
-Using an agent? Point it at
-[for-agents.md](https://github.com/scottlarkin/muninn-release/blob/main/for-agents.md)
-and it can do the install for you.
-
-<details>
-<summary><b>Manual install</b> — if you would rather not pipe a script to bash</summary>
-
-If you would rather see every step, pick your platform — `darwin_arm64` (Apple
-Silicon), `darwin_amd64` (Intel Mac), `linux_amd64`, or `linux_arm64`:
+When it finishes:
 
 ```sh
-# Latest tag from https://github.com/scottlarkin/muninn-release/releases/latest
-VERSION=v0.1.2
-PLATFORM=darwin_arm64
+muninn doctor                  # every line should read ok
+cd ~/your/project
+muninn index                   # build the code graph for this repo
+```
+
+Restart Claude Code if you installed hooks so they load.
+
+Using an agent to install? Point it at
+[for-agents.md](https://github.com/scottlarkin/muninn-release/blob/main/for-agents.md).
+
+<details>
+<summary><b>Manual install</b> — tarball instead of the installer script</summary>
+
+Pick your platform — `darwin_arm64` (Apple Silicon), `darwin_amd64` (Intel Mac),
+`linux_amd64`, or `linux_arm64`. Set `VERSION` to the tag on the
+[latest release](https://github.com/scottlarkin/muninn-release/releases/latest)
+(or resolve it with the one-liner below):
+
+```sh
+VERSION=$(curl -fsSL https://api.github.com/repos/scottlarkin/muninn-release/releases/latest | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -1)
+PLATFORM=darwin_arm64   # or linux_amd64, etc.
 
 curl -fsSL -o muninn.tar.gz \
   "https://github.com/scottlarkin/muninn-release/releases/download/${VERSION}/muninn_${VERSION}_${PLATFORM}.tar.gz"
@@ -121,12 +130,14 @@ sudo mv muninn /usr/local/bin/
 muninn version
 ```
 
-Verify against `checksums.txt` on the
+Verify against `checksums.txt` on that
 [release](https://github.com/scottlarkin/muninn-release/releases/latest):
 
 ```sh
 shasum -a 256 muninn.tar.gz
 ```
+
+Then run the **Manual set up** steps below (the tarball is only the binary).
 
 > **macOS: use `curl`, not your browser.** Gatekeeper quarantines files
 > downloaded through a browser, and the binary will refuse to run —
@@ -140,7 +151,8 @@ shasum -a 256 muninn.tar.gz
 
 </details>
 
-## Set up
+<details>
+<summary><b>Manual set up</b> — without the installer (or after a tarball install)</summary>
 
 **1. Start the dependencies.**
 
@@ -201,6 +213,43 @@ Every line should read `ok`. Then index a repository:
 cd ~/your/project
 muninn index
 ```
+
+</details>
+
+## Requirements
+
+Always: **macOS 12+** (Apple Silicon or Intel) or **Linux with glibc 2.34+**
+(Debian 12+, Ubuntu 22.04+, RHEL 9+).
+
+Everything else depends on how much you run yourself. muninn needs three things —
+a graph, an embedder, and an LLM — and each can be local or remote, so the
+footprint ranges from "a 15 MB binary" to "a small workstation".
+
+| | Fully remote | Local graph, remote models | Fully local |
+|---|---|---|---|
+| **Graph** | your neo4j / Aura | Docker neo4j | Docker neo4j |
+| **Embeddings** | remote API | remote API | Ollama |
+| **LLM** | remote API | remote API | Ollama |
+| **Docker** | not needed | yes | yes |
+| **Disk** | ~15 MB | ~1 GB | ~15 GB |
+| **RAM** | negligible | ~2 GB | 16 GB comfortable |
+| **Cost** | per-token + hosting | per-token | free |
+| **Privacy** | data leaves your machine | prompts leave your machine | nothing leaves |
+
+Where the disk goes: the binary is 15 MB. The neo4j image is ~1 GB. The Ollama
+image is ~9 GB on its own — it bundles GPU runtimes — plus ~0.6 GB of embedding
+models and ~4.7 GB for the default local LLM (`qwen2.5-coder:7b`).
+
+RAM: neo4j is configured for a 1 GB heap. A 7B local model needs roughly 5 GB
+more while it runs, which is what pushes the fully-local column up.
+
+> **On macOS, prefer a native Ollama** over the Docker one — the
+> [app or `brew install ollama`](https://ollama.com/download) is a fraction of
+> the size and gets GPU acceleration, which the containerised version does not.
+> The installer will detect it: choose "I already have Ollama running".
+
+Mixing is normal — a local graph with a hosted LLM is a good default, since the
+graph holds your memory and the LLM only sees individual prompts.
 
 ## Using it
 
@@ -463,7 +512,7 @@ schema. The vector index dimension is fixed at creation; point `[neo4j].uri` at
 a fresh database, or revert the model.
 
 **macOS: "cannot be opened because the developer cannot be verified".** See the
-quarantine note under [Install](#direct-download).
+quarantine note under [Quick start](#quick-start) → Manual install.
 
 **Linux: `GLIBC_2.xx not found`.** Your distribution is older than the build
 floor. Debian 12+, Ubuntu 22.04+ or RHEL 9+ are required.
