@@ -538,6 +538,30 @@ floor. Debian 12+, Ubuntu 22.04+ or RHEL 9+ are required.
 
 </details>
 
+## Roadmap
+
+Direction, not a schedule. Several of these already exist in early form
+(`muninn serve`, tenant scoping, management UI at `/ui`); the work is to make
+them production-shaped and easy to adopt.
+
+- **Server memory for deployed agents** — use muninn as the memory backend for
+  agents that do not live on a developer laptop (workers, fleets, CI), with
+  auth and ops guidance to match.
+- **Multi-tenancy** — first-class shared-server deploys: isolation, admin, and
+  docs for many tenants on one graph.
+- **Management UI** — deepen the embedded `/ui` for operators (config, graph,
+  keys/tenants, recall) so it is a reliable companion to the CLI.
+- **First-class harness support** — install, hooks, and skills parity for more
+  coding-agent harnesses beyond the Claude Code reference integration.
+- **Language SDKs** — thin clients over the HTTP API (TypeScript, Python, …)
+  so agents do not hand-roll `/v1`.
+- **Re-embed / re-index on model change** — change embedding models without
+  wiping the graph: batch re-embed of memory plus full code re-index.
+
+Bug reports and production needs on the
+[issue tracker](https://github.com/scottlarkin/muninn-release/issues) help
+prioritise.
+
 ## Support
 
 Provided as-is, with no obligation to supply support, updates or maintenance —
