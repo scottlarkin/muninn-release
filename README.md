@@ -129,7 +129,8 @@ muninn index                   # build the code graph for this repo
 Restart Claude Code if you installed hooks so they load.
 
 Using an agent to install? Point it at
-[for-agents.md](https://github.com/scottlarkin/muninn-release/blob/main/for-agents.md).
+[muninnai.dev/for-agents](https://muninnai.dev/for-agents)
+(or paste: `Install muninn following https://muninnai.dev/for-agents`).
 
 <details>
 <summary><b>Manual install</b> — tarball instead of the installer script</summary>
