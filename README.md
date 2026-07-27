@@ -1,3 +1,8 @@
+
+https://github.com/user-attachments/assets/0b343a6d-7b8a-4d8d-8e59-1eb23b903137
+
+https://github.com/user-attachments/assets/66c99c6d-1f09-4d1f-871f-4020ac865c5e
+
 <p align="center">
   <img src="assets/muninn.jpg" alt="muninn" width="480">
 </p>
@@ -67,16 +72,14 @@ link under each clip.
 
 **`muninn recall`** — what you worked on, reconstructed from the graph:
 
-<video src="https://raw.githubusercontent.com/scottlarkin/muninn-release/main/assets/demo-recall.mp4" controls muted loop width="700"></video>
+https://github.com/user-attachments/assets/3b236420-2010-40c2-a0c9-50ac55925c22
 
-<!-- Fallback for renderers without video support (and for the tarball copy). -->
-[▶ recall demo](https://raw.githubusercontent.com/scottlarkin/muninn-release/main/assets/demo-recall.mp4)
 
 **`muninn open`** — describe the code you want and it opens the files:
 
-<video src="https://raw.githubusercontent.com/scottlarkin/muninn-release/main/assets/demo-open.mp4" controls muted loop width="700"></video>
 
-[▶ open demo](https://raw.githubusercontent.com/scottlarkin/muninn-release/main/assets/demo-open.mp4)
+https://github.com/user-attachments/assets/545e24c7-45be-43cb-9e1e-c5eedad3c8bd
+
 
 ## Quick start
 
