@@ -66,6 +66,10 @@ How memory is turned into vectors for search. `spaces` defines one embedding mod
 
 Used to distil lessons from sessions and mint entities. `provider` selects the backend; the other keys are read per provider. `claude-cli` shells out to your local `claude` binary and is only reachable by naming it explicitly.
 
+The quality evals are recorded against `claude-haiku-4-5`, so treat that as the floor: below it, models increasingly miss the strict-JSON output contract, which yields *no* lesson rather than a poor one. `qwen2.5-coder:7b` is the tested local default.
+
+`model_haiku` is the model muninn actually calls — set it to any model id your provider accepts, including a Sonnet or GPT-class one, if you want something stronger.
+
 | Setting | Default | Description |
 |---|---|---|
 | `llm.anthropic_api_key` | `env:ANTHROPIC_API_KEY` | Anthropic API key (literal, env:VAR, or file:path); redacted in responses. |

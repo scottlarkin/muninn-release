@@ -32,6 +32,7 @@ CMD_NAME="muninn"
 
 ASSUME_YES=0
 WANT_VERSION=""
+LOCAL_FILE=""
 PREFIX=""
 DO_STACK=1
 DO_CLAUDE=1
@@ -126,6 +127,7 @@ usage: install.sh [options]
 
   --yes             assume yes; required when there is no terminal to prompt on
   --version TAG     install a specific release (default: latest)
+  --file PATH       install from a local .tar.gz instead of downloading
   --prefix DIR      install the binary here (default: /usr/local/bin, else ~/.local/bin)
   --stack-dir DIR   where to write the docker compose stack (default ~/.config/muninn/stack)
   --no-stack        skip Docker: do not write or start the neo4j + Ollama stack
@@ -141,6 +143,10 @@ while [ $# -gt 0 ]; do
   --yes | -y) ASSUME_YES=1 ;;
   --version)
     WANT_VERSION="${2:?--version needs a tag}"
+    shift
+    ;;
+  --file)
+    LOCAL_FILE="${2:?--file needs a path}"
     shift
     ;;
   --prefix)
@@ -286,6 +292,9 @@ ok "$PLATFORM"
 # 2. Resolve the version. Asset filenames embed the tag, so /releases/latest/
 # download/<asset> cannot be used — resolve the tag from the redirect first.
 # ---------------------------------------------------------------------------
+if [ -n "$LOCAL_FILE" ]; then
+  VERSION="local"
+else
 step "Finding the latest release"
 if [ -n "$WANT_VERSION" ]; then
   VERSION="$WANT_VERSION"
@@ -296,6 +305,7 @@ else
     die "could not resolve the latest release; pass --version vX.Y.Z"
 fi
 ok "$VERSION"
+fi
 
 # ---------------------------------------------------------------------------
 # 3. Download and verify
@@ -303,6 +313,21 @@ ok "$VERSION"
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 
+if [ -n "$LOCAL_FILE" ]; then
+  # --file installs a tarball you already have: a local build, an artifact pulled
+  # from CI, or a mirrored release. Everything after extraction is identical, so
+  # this exercises the real install path — which is the point, since the download
+  # is the one step that cannot be tested before the release repo is public.
+  step "Installing from $LOCAL_FILE"
+  [ -f "$LOCAL_FILE" ] || die "no such file: $LOCAL_FILE"
+  cp "$LOCAL_FILE" "$TMP/local.tar.gz" || die "could not read $LOCAL_FILE"
+  ok "$(wc -c <"$TMP/local.tar.gz" | tr -d ' ') bytes"
+  # No checksum: there is no published digest for a file you built yourself, and
+  # inventing one here would only verify the copy we just made.
+  warn "checksum not verified for a local file"
+  tar -xzf "$TMP/local.tar.gz" -C "$TMP" || die "could not extract $LOCAL_FILE"
+  [ -f "$TMP/$BIN_NAME" ] || die "archive did not contain a $BIN_NAME binary"
+else
 ASSET="muninn_${VERSION}_${PLATFORM}.tar.gz"
 # MUNINN_RELEASE_BASE overrides where artifacts are fetched from: an internal
 # mirror, or a file:// directory. It is also the only way to exercise this script
@@ -334,6 +359,7 @@ fi
 
 tar -xzf "$TMP/$ASSET" -C "$TMP" || die "could not extract $ASSET"
 [ -f "$TMP/$BIN_NAME" ] || die "archive did not contain a $BIN_NAME binary"
+fi
 
 # ---------------------------------------------------------------------------
 # 4. Install the binary to its FINAL location (see the header — muninn install

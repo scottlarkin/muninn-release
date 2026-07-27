@@ -13,6 +13,16 @@ It runs entirely on your own machine. Your memory graph lives in a database you
 control, prompts go only to model endpoints you configure, and nothing is
 reported anywhere.
 
+**Three ways to use it:**
+
+- **With Claude Code** — hooks record and inject automatically, nothing to run.
+  This is the reference integration and what the setup below covers.
+- **As a plain CLI** — `muninn search`, `recall`, `remember`, `similar`,
+  `impact`, `risky`, `open`. No agent required; useful on its own.
+- **With another agent** — the integration points are ordinary subcommands that
+  read one JSON object on stdin and may write one to stdout, so any harness with
+  lifecycle hooks can drive it. See `muninn hook --help`.
+
 Closed-source software. See [LICENSE](LICENSE).
 
 ## What it does
@@ -165,7 +175,7 @@ generated file is commented out with its default shown.
 muninn schema init
 ```
 
-**4. Wire up Claude Code.**
+**4. Wire up Claude Code** — optional; skip it if you only want the CLI.
 
 ```sh
 muninn install
@@ -194,8 +204,9 @@ muninn index
 
 ## Using it
 
-Recall is automatic — the hooks handle it. These commands and skills are for
-when you want to ask directly.
+With Claude Code, recall is automatic — the hooks handle it, and the skills give
+you slash commands. **Every one of these also works as a plain CLI command**, with
+or without an agent installed.
 
 | Skill | Command | What it does |
 |---|---|---|
@@ -325,6 +336,46 @@ Two things to get right here:
 `base_url` is any OpenAI-compatible endpoint, so this shape also covers a
 gateway, a local vLLM, or an internal proxy.
 </details>
+
+### Choosing models
+
+**The LLM.** muninn uses it to decide what is worth remembering: whether a message
+contains a durable lesson, how to phrase it, which entities it mentions, and what
+a whole session amounts to. These are strict-JSON extraction tasks, not reasoning
+ones — but they do need judgement about what is durable versus incidental.
+
+The quality evals are recorded against **`claude-haiku-4-5`**, so that is the
+reference point: it is what the prompts were tuned on and what the committed
+fixtures replay. Treat it as the floor.
+
+- **At or above Haiku-class** — works as designed. Stronger models cost more and
+  are unlikely to change much, because the bottleneck is judgement about
+  durability rather than raw capability.
+- **Below it** — your mileage will vary, and the failure is quiet. A model that
+  misses the JSON contract produces *no* lesson and a warning in the log, so you
+  lose memory rather than getting bad memory. Vaguer lessons are the milder
+  version of the same problem.
+- **Locally**, `qwen2.5-coder:7b` is the tested default. Smaller models
+  increasingly fail the output contract; below roughly 7B, expect little to be
+  learned.
+
+**To use a different model**, set `llm.model_haiku` — that is the key muninn
+reads for its calls, whatever model id you put in it:
+
+```toml
+[llm]
+provider = "anthropic"
+model_haiku = "claude-sonnet-4-6"   # any model id your provider accepts
+```
+
+Cost scales with how much you use Claude Code, not with the size of your graph:
+one call per qualifying prompt, and one per session end.
+
+**Embeddings** are a separate decision, and a more permanent one — the dimension
+is written into the graph's vector indexes and cannot be changed later without
+starting over. See [config.md](config.md#embed) before switching. The defaults
+(`nomic-embed-text` for prose, a code-specific model for source) are chosen so the
+code space understands identifiers rather than treating them as English.
 
 ### Turning off auto-recall in Claude Code
 
