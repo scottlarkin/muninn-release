@@ -6,12 +6,14 @@
 
 *Named for Muninn, Odin’s raven of memory.*
 
+**Website:** [muninnai.dev](https://muninnai.dev)
+
 [![Latest release](https://img.shields.io/github/v/release/scottlarkin/muninn-release?label=release)](https://github.com/scottlarkin/muninn-release/releases/latest)
 
-Persistent memory for coding agents. muninn records what you and your agent
-work on, distils durable lessons from it, and injects the relevant parts back
-into every prompt automatically — so you stop re-explaining your codebase,
-your conventions, and the approaches that already failed.
+Agent memory for Claude Code and other coding harnesses. muninn records what
+you and your agent work on, distils durable lessons from it, and injects the
+relevant parts back into every prompt automatically — so you stop re-explaining
+your codebase, your conventions, and the approaches that already failed.
 
 It runs entirely on your own machine. Your memory graph lives in a database you
 control, prompts go only to model endpoints you configure, and nothing is
