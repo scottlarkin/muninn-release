@@ -4,6 +4,8 @@
 
 # muninn
 
+*Named for Muninn, Odin’s raven of memory.*
+
 [![Latest release](https://img.shields.io/github/v/release/scottlarkin/muninn-release?label=release)](https://github.com/scottlarkin/muninn-release/releases/latest)
 
 Persistent memory for coding agents. muninn records what you and your agent
@@ -33,13 +35,15 @@ Closed-source software. See [LICENSE](LICENSE).
   to what you just asked and prepends it. No command to remember to run.
 - **Lessons with confidence.** Corrections and preferences become durable
   lessons, deduplicated semantically and superseded in chains as you change your
-  mind. Lessons that keep proving useful gain confidence; stale ones lose it.
+  mind. Lessons that keep proving useful gain confidence; ones that keep failing
+  lose it (see [How it works](#how-it-works)).
 - **Dead ends.** Negative knowledge is first class: "X was tried for P and did
   not work because Y". Surfaced in its own section so an agent stops re-exploring
   approaches you already ruled out.
-- **A code graph.** tree-sitter parses your repo into files, functions, classes
-  and types with import and call edges, so you can ask what depends on a symbol,
-  which files are risky to change, and where similar code already exists.
+- **A code graph.** tree-sitter parses TypeScript/JavaScript, Python, Go, and
+  Elixir into files, functions, classes and types with import and call edges, so
+  you can ask what depends on a symbol, which files are risky to change, and
+  where similar code already exists.
 - **Entity ontology.** People, tools, projects and concepts are minted as typed
   entities and linked, so recall can follow relationships rather than just
   matching text.
@@ -47,6 +51,26 @@ Closed-source software. See [LICENSE](LICENSE).
 Not a vector dump of past chats. Lessons are scored by outcomes, dead ends are
 first-class, and the code graph sits beside session memory so recall can follow
 structure as well as text.
+
+## How it works
+
+Memory improves from **outcomes**, not just from being recalled.
+
+1. **Record.** Prompts and responses land in your graph. Durable lessons and
+   dead ends are distilled from sessions; you can also assert facts with
+   `muninn remember` or record a failed approach with `muninn remember --dead-end`.
+2. **Recall.** On the next prompt, muninn ranks related past work, lessons,
+   dead ends, entities, and code, then injects what is relevant.
+3. **Reinforce.** A clean turn raises confidence on lessons that were recalled
+   and kept; ones with usage evidence rise faster. A correction lowers it.
+   Lessons that keep failing fall past the recall cutoff and stop surfacing.
+   Explicit `remember` assertions stick until you change or forget them.
+4. **Structure.** A code graph (imports, calls, symbols) and an entity layer
+   that grows as you work (people, tools, projects, concepts) let recall follow
+   relationships, not only similar text.
+
+The loop is automatic under Claude Code hooks. The CLI exposes the same graph
+when you want to search, recall, or inspect by hand.
 
 ## Who it's for
 
@@ -62,19 +86,15 @@ complements them rather than replacing them.
 ## See it work
 
 CLI demos below. With Claude Code, the same memory is injected into prompts
-automatically — no command to remember. If a player does not show, use the
-link under each clip.
+automatically — no command to remember.
 
 **`muninn recall`** — what you worked on, reconstructed from the graph:
 
 https://github.com/user-attachments/assets/3b236420-2010-40c2-a0c9-50ac55925c22
 
-
 **`muninn open`** — describe the code you want and it opens the files:
 
-
 https://github.com/user-attachments/assets/545e24c7-45be-43cb-9e1e-c5eedad3c8bd
-
 
 ## Quick start
 
@@ -380,8 +400,7 @@ asymmetric = false
 provider = "openai"
 base_url = "https://api.openai.com"
 api_key = "env:OPENAI_API_KEY"
-model_haiku = "gpt-4o-mini"
-model_sonnet = "gpt-4o"
+model = "gpt-4o-mini"
 ```
 
 Two things to get right here:
@@ -419,13 +438,13 @@ fixtures replay. Treat it as the floor.
   increasingly fail the output contract; below roughly 7B, expect little to be
   learned.
 
-**To use a different model**, set `llm.model_haiku` — that is the key muninn
-reads for its calls, whatever model id you put in it:
+**To use a different model**, set `llm.model` — that is the single model muninn
+calls, whatever model id you put in it:
 
 ```toml
 [llm]
 provider = "anthropic"
-model_haiku = "claude-sonnet-4-6"   # any model id your provider accepts
+model = "claude-sonnet-4-6"
 ```
 
 Cost scales with how much you use Claude Code, not with the size of your graph:
@@ -479,12 +498,14 @@ something else. Unlike `inject = false`, this stops the graph growing too.
 ## Privacy
 
 - The memory graph is stored in **your** neo4j. Nothing is uploaded.
-- Prompts and completions go only to the endpoints you configure — local Ollama
-  by default.
+- Prompts and completions go only to the endpoints you configure. Embeddings
+  default to local Ollama; the LLM defaults to Anthropic (or whatever you pick
+  at install). Fully local is available.
 - Usage counters (token spend, request kinds) are written into your own graph,
   visible only to you.
-- There is no analytics, no version check, no crash reporting, and no
-  phone-home of any kind.
+- There is no analytics, no automatic update check, no crash reporting, and no
+  background phone-home. `muninn upgrade` only contacts the release server when
+  you run it.
 - The one recurring paid outbound call, an optional LLM liveness probe, is off
   by default.
 

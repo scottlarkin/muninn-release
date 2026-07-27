@@ -68,7 +68,7 @@ Used to distil lessons from sessions and mint entities. `provider` selects the b
 
 The quality evals are recorded against `claude-haiku-4-5`, so treat that as the floor: below it, models increasingly miss the strict-JSON output contract, which yields *no* lesson rather than a poor one. `qwen2.5-coder:7b` is the tested local default.
 
-`model_haiku` is the model muninn actually calls — set it to any model id your provider accepts, including a Sonnet or GPT-class one, if you want something stronger.
+`model` is the model muninn actually calls — set it to any model id your provider accepts. Empty uses the provider default (`claude-haiku-4-5` for anthropic/openai, `qwen2.5-coder:7b` for ollama).
 
 | Setting | Default | Description |
 |---|---|---|
@@ -77,9 +77,10 @@ The quality evals are recorded against `claude-haiku-4-5`, so treat that as the 
 | `llm.api_key` | _(unset)_ | OpenAI bearer API key (openai provider only); redacted in responses. |
 | `llm.base_url` | `http://127.0.0.1:11434` | Base URL for the ollama/openai LLM provider. |
 | `llm.keep_alive` | `10m` | Ollama keep-alive window for the loaded model. |
-| `llm.local_model` | `qwen2.5-coder:7b` | Local (ollama) model for on-device distillation. |
-| `llm.model_haiku` | `claude-haiku-4-5` | Fast/cheap model used for lesson promotion and light tasks. |
-| `llm.model_sonnet` | `claude-sonnet-4-6` | Higher-capability model used for heavier distillation. |
+| `llm.local_model` | _(empty)_ | Deprecated alias for llm.model when provider is ollama (still read for compatibility). |
+| `llm.model` | _(empty)_ | Model id for every LLM call. Empty uses the provider default (claude-haiku-4-5 for anthropic/openai, qwen2.5-coder:7b for ollama). |
+| `llm.model_haiku` | _(empty)_ | Deprecated alias for llm.model (still read for compatibility). |
+| `llm.model_sonnet` | _(empty)_ | Deprecated and unused; there is no second model tier. Prefer llm.model. |
 | `llm.provider` | `anthropic` | LLM provider ("anthropic", "openai", "ollama", or "claude-cli"). |
 | `llm.timeout_api` | `30s` | Provider-level timeout ceiling for hosted API LLM calls. |
 | `llm.timeout_local` | `1m0s` | Provider-level timeout ceiling for local LLM calls. |

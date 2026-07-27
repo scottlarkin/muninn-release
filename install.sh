@@ -655,13 +655,13 @@ render_config() {
   ollama)
     printf '\n[llm]\nprovider = "ollama"\n'
     printf 'base_url = "%s"\n' "$LLM_URL"
-    [ -n "$LLM_MODEL" ] && printf 'local_model = "%s"\n' "$LLM_MODEL"
+    [ -n "$LLM_MODEL" ] && printf 'model = "%s"\n' "$LLM_MODEL"
     ;;
   openai)
     printf '\n[llm]\nprovider = "openai"\n'
     printf 'base_url = "%s"\n' "$LLM_URL"
     printf 'api_key = "%s"\n' "$LLM_KEY"
-    [ -n "$LLM_MODEL" ] && printf 'model_haiku = "%s"\n' "$LLM_MODEL"
+    [ -n "$LLM_MODEL" ] && printf 'model = "%s"\n' "$LLM_MODEL"
     ;;
   skip)
     printf '\n# No LLM configured: lessons are not distilled. Set llm.provider when ready.\n'
