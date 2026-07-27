@@ -386,11 +386,17 @@ $SUDO install -m 0755 "$TMP/$BIN_NAME" "$DEST/$CMD_NAME" ||
 MUNINN="$DEST/$CMD_NAME"
 ok "$MUNINN ($("$MUNINN" version 2>/dev/null || echo '?'))"
 
+# HINT is what the closing instructions tell the user to type. When the install
+# directory is not on PATH, a bare command name is not copy-pasteable and reads as
+# a broken install — so name the absolute path instead.
+HINT="$CMD_NAME"
 case ":$PATH:" in
 *":$DEST:"*) ;;
 *)
-  warn "$DEST is not on your PATH — add it to your shell profile:"
-  say "         export PATH=\"$DEST:\$PATH\""
+  HINT="$MUNINN"
+  warn "$DEST is not on your PATH."
+  say  "         Either use the full path below, or add it to your shell profile:"
+  say  "           export PATH=\"$DEST:\$PATH\""
   ;;
 esac
 
@@ -523,6 +529,20 @@ fi
 
 [ "$NEO_MODE" = docker ] && NEED_NEO4J=1
 [ "$EMB_MODE" = docker ] && NEED_OLLAMA=1
+
+# --no-stack is authoritative. The wizard still asks about each dependency (the
+# answers shape the config either way), so without this a Docker choice would
+# start containers despite the flag that exists to prevent exactly that.
+if [ "$DO_STACK" = 0 ] && { [ "$NEED_NEO4J" = 1 ] || [ "$NEED_OLLAMA" = 1 ]; }; then
+  warn "--no-stack given, so no containers will be started."
+  say  "         Point the config at endpoints you already run, or re-run without --no-stack."
+  NEED_NEO4J=0
+  NEED_OLLAMA=0
+  # Report the modes as "existing" too, so the plan below describes what will
+  # actually happen rather than the Docker setup that was asked for and refused.
+  [ "$NEO_MODE" = docker ] && NEO_MODE=existing
+  [ "$EMB_MODE" = docker ] && EMB_MODE=existing
+fi
 
 step "Plan"
 case "$NEO_MODE" in
@@ -711,9 +731,9 @@ step "Done"
 say "  Restart Claude Code so the hooks load."
 say ""
 say "  Then index a repository:"
-say "    ${C_B}cd /path/to/your/project && $CMD_NAME index${C_OFF}"
+say "    ${C_B}cd /path/to/your/project && $HINT index${C_OFF}"
 say ""
-say "  ${C_DIM}Ask memory anything:     $CMD_NAME search \"how did we do auth\"${C_OFF}"
+say "  ${C_DIM}Ask memory anything:     $HINT search \"how did we do auth\"${C_OFF}"
 say "  ${C_DIM}Turn off auto-injection: set recall.inject = false${C_OFF}"
 say "  ${C_DIM}Disable entirely:        export MUNINN_DISABLE=1${C_OFF}"
 say ""

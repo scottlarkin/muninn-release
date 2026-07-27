@@ -226,6 +226,19 @@ or without an agent installed.
 
 `muninn --help` lists everything.
 
+### Upgrading
+
+```sh
+muninn upgrade           # or --check to see if there is a newer release
+```
+
+It replaces the running binary in place, so an install under a different path or
+name updates itself and the Claude Code hooks keep pointing at it. The download is
+checksum-verified and a mismatch aborts without touching what you have.
+
+Skills are embedded in the binary, so run `muninn install` afterwards to refresh
+the copies in `~/.claude`, then restart Claude Code.
+
 ## Configuration
 
 Config lives at `~/.config/muninn/config.toml`. Precedence, lowest first:
