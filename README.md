@@ -1,8 +1,3 @@
-
-https://github.com/user-attachments/assets/0b343a6d-7b8a-4d8d-8e59-1eb23b903137
-
-https://github.com/user-attachments/assets/66c99c6d-1f09-4d1f-871f-4020ac865c5e
-
 <p align="center">
   <img src="assets/muninn.jpg" alt="muninn" width="480">
 </p>
