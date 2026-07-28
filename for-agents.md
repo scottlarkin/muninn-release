@@ -109,8 +109,11 @@ Tell the user to **restart Claude Code** — hooks load at startup. Then suggest
 `muninn doctor` should be all `ok`. Specifically confirm:
 
 - `neo4j reachable` and `embedder reachable`
-- `embed dim vs schema` — a mismatch means the embedding model changed after the
-  schema was created; the vector index dimension is fixed at creation
+- `embed dim vs schema` — FAIL means config dim no longer matches live vector
+  indexes; repair with `muninn reembed --yes` (local bolt), not a fresh database
+- `embed fingerprint` — ok when `:EmbedConfig` matches config; WARN if missing
+  (upgraded graph): `muninn reembed --stamp-only` if dims/models already match,
+  or `muninn reembed --check` / `--yes` if the operator changed embed settings
 - `hooks installed` — a `warn` here is fine if the user gets hooks from the
   Claude Code plugin instead; a `FAIL hook binary` line means a hook points at a
   moved or deleted binary, so re-run `muninn install`
@@ -125,6 +128,7 @@ Tell the user to **restart Claude Code** — hooks load at startup. Then suggest
 | `docker: command not found` | Install Docker, or use `--no-stack` and point config at an existing neo4j. |
 | `schema init` connection refused | neo4j not healthy yet, or the password is not in the config. Check both. |
 | `embedder unreachable` | Ollama is still pulling models. Wait, then re-check. |
+| `embed dim vs schema` FAIL / fingerprint drift | Operator changed embed model or dim. `muninn reembed --check`, then `--yes` (and `muninn index` if code space changed). Do not wipe the graph. |
 | macOS `cannot be opened because the developer cannot be verified` | The tarball was downloaded by a browser and quarantined. `xattr -dr com.apple.quarantine <path>/muninn`. Use `curl`. |
 | Memory silently not working | Almost always a stale hook path. `muninn doctor`, then `muninn install`, then restart Claude Code. |
 

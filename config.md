@@ -41,13 +41,11 @@ The memory graph. `muninn stack init` generates a password; everything else has 
 
 How memory is turned into vectors for search. `spaces` defines one embedding model per slot: `text` for prose, `code` for source.
 
-> **Choose your embedding model before you accumulate memory — it is effectively permanent.**
+> **Choose your embedding model carefully before you accumulate a large graph.**
 >
-> `dim` is written into the graph's vector indexes when `muninn schema init` runs. Changing it afterwards is refused, not ignored: `schema migrate` errors and `muninn doctor` reports `embed dim vs schema` as FAIL. Changing it for real means dropping the vector indexes and re-embedding.
+> `dim` is written into the graph's vector indexes when `muninn schema init` runs. Changing it afterwards is refused by `schema migrate` / `doctor` (`embed dim vs schema`) until you repair: run **`muninn reembed`** to drop/recreate indexes, batch re-embed memory, and stamp `:EmbedConfig`. Code vectors need `muninn index` on each repo after a code-space change.
 >
-> There is no command that re-embeds existing memory. `muninn index` re-embeds code, but lessons, prompts and entities cannot be re-embedded — so switching embedding model in practice means starting a fresh graph and losing what you have accumulated.
->
-> Worse, swapping to a *different* model with the *same* dim passes every check and raises no error, while placing new vectors in a different semantic space from the old ones. Recall then degrades quietly. Matching `dim` is necessary, not sufficient.
+> Model changes at the *same* dim used to pass silently (mixed geometry, quiet recall degradation). The embed fingerprint closes that gap — `muninn doctor` and `muninn reembed --check` report drift; re-embed so old and new vectors are not mixed.
 
 | Setting | Default | Description |
 |---|---|---|
@@ -260,7 +258,17 @@ Where muninn logs and how much it keeps.
 
 ## `[serve]`
 
-Only relevant if you run `muninn serve` as a shared server.
+Only relevant if you run `muninn serve` as a shared server. These knobs configure **this** process when it is the HTTP backend. They are independent of `[server]` (how the CLI talks *to* a backend).
+
+CLI overrides for a single invocation (see `muninn serve -h`):
+
+| Flag | Overrides |
+|---|---|
+| `--addr host:port` | `serve.addr` |
+| `--auth-mode none\|api_key` | `serve.auth_mode` |
+| `--allow-insecure-bind` | permits `auth_mode=none` on a non-loopback bind (otherwise refused) |
+
+Endpoint table: `muninn api`. Full narrative: `API.md` in the release tarball (source: [docs/API.md](docs/API.md)). Long-lived host service (Linux systemd / macOS launchd): README § HTTP server, or [docs/SERVE.md](docs/SERVE.md) in source.
 
 | Setting | Default | Description |
 |---|---|---|
@@ -281,7 +289,17 @@ Only relevant if you run `muninn serve` as a shared server.
 
 ## `[server]`
 
-Only relevant if this CLI talks to a muninn server instead of neo4j directly. A non-empty `url` switches on client mode.
+Only relevant if this CLI talks to a muninn server instead of neo4j directly. A non-empty `url` switches **other** CLI commands and hooks into client mode (HTTP `/v1` instead of dialling neo4j). It does **not** change `muninn serve`: serve always starts a local backend using `[serve]` / `neo4j.*` / `embed.*` / `llm.*`. Starting serve alone does not flip the CLI to client mode — set `server.url` (or `MUNINN_SERVER__URL`) for that.
+
+Self-host on one machine:
+
+```toml
+[serve]
+addr = "127.0.0.1:8080"
+
+[server]
+url = "http://127.0.0.1:8080"
+```
 
 | Setting | Default | Description |
 |---|---|---|

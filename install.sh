@@ -4,6 +4,7 @@
 #
 # usage:  curl -fsSL https://muninnai.dev/install.sh | bash
 #         curl -fsSL https://muninnai.dev/install.sh | bash -s -- --yes --no-stack
+#         (also: raw.githubusercontent.com/scottlarkin/muninn-release/main/install.sh)
 #
 # Design notes, because a curl|sh script is a trust ask and should be readable:
 #

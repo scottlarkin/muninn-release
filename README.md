@@ -309,6 +309,118 @@ checksum-verified and a mismatch aborts without touching what you have.
 Skills are embedded in the binary, so run `muninn install` afterwards to refresh
 the copies in `~/.claude`, then restart Claude Code.
 
+## HTTP server (optional)
+
+Most installs use the CLI against local Neo4j directly. You can also run
+`muninn serve` as a long-lived HTTP backend (`/v1` + UI at `/ui`) and point the
+CLI at it. Starting serve alone does **not** switch the CLI — set `[server].url`.
+
+```toml
+# ~/.config/muninn/config.toml
+[serve]
+addr = "127.0.0.1:8080"
+auth_mode = "none"            # loopback only
+
+[server]
+url = "http://127.0.0.1:8080" # CLI + hooks use client mode
+```
+
+Smoke-test in the foreground (`muninn serve`, then
+`curl -s http://127.0.0.1:8080/v1/health`) before installing a service.
+Keep `auth_mode=none` on loopback only; network exposure needs `api_key` and TLS.
+
+### HTTP API (`/v1`)
+
+Custom clients and non-CLI harnesses talk to the same surface as client mode.
+
+| Resource | What it is |
+|---|---|
+| **[API.md](API.md)** | Full contract: auth, scopes, errors, rate limits, endpoint shapes (ships in the tarball and on this repo) |
+| `muninn api` | Compact offline method/path/scope table (always matches this binary) |
+| `muninn serve -h` | Listen flags, `[serve]` vs `[server]`, self-host recipe |
+
+`GET /v1/health` and `GET /v1/version` need no key. With `auth_mode=api_key`,
+send `Authorization: Bearer mn_…`. Embed/dim repair is **not** an HTTP route —
+use `muninn reembed` on the machine with bolt access.
+
+<details>
+<summary><b>Linux — systemd user service</b></summary>
+
+Write `~/.config/systemd/user/muninn-serve.service` (set `ExecStart` to
+`command -v muninn`):
+
+```ini
+[Unit]
+Description=muninn HTTP API (serve)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/muninn serve
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+
+[Install]
+WantedBy=default.target
+```
+
+```sh
+systemctl --user daemon-reload
+systemctl --user enable --now muninn-serve.service
+journalctl --user -u muninn-serve.service -f
+```
+
+To start at boot without logging in: `loginctl enable-linger "$USER"`.
+After `muninn upgrade`: `systemctl --user restart muninn-serve.service`.
+
+</details>
+
+<details>
+<summary><b>macOS — launchd agent</b></summary>
+
+Write `~/Library/LaunchAgents/dev.muninn.serve.plist` with **absolute** paths
+(launchd does not expand `~`). Replace `YOU` and the binary path with your
+account and `command -v muninn`:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>dev.muninn.serve</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/YOU/.local/bin/muninn</string>
+    <string>serve</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>/Users/YOU/Library/Logs/muninn-serve.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/YOU/Library/Logs/muninn-serve.err.log</string>
+</dict>
+</plist>
+```
+
+```sh
+mkdir -p ~/Library/Logs
+launchctl bootstrap "gui/$(id -u)" ~/Library/LaunchAgents/dev.muninn.serve.plist
+curl -s http://127.0.0.1:8080/v1/health
+```
+
+Unload: `launchctl bootout "gui/$(id -u)/dev.muninn.serve"`. After upgrading the
+binary, bootout then bootstrap again. If Gatekeeper blocks the binary, see the
+quarantine note under Quick start.
+
+</details>
+
 ## Configuration
 
 Config lives at `~/.config/muninn/config.toml`. Precedence, lowest first:
@@ -408,9 +520,11 @@ model = "gpt-4o-mini"
 
 Two things to get right here:
 
-- **`dim` must match your model, and must be set before `muninn schema init`.**
-  It is baked into the graph's vector indexes at creation and cannot be changed
-  afterwards without a fresh database. `text-embedding-3-small` is 1536;
+- **`dim` must match your model.** Set it before `muninn schema init` when you
+  can — it is written into the vector indexes at creation. Changing dim or
+  model later is supported via **`muninn reembed`** (rebinds indexes, re-embeds
+  memory; run `muninn index` for code). Prefer getting it right first on a large
+  graph (re-embed is slow/costly). `text-embedding-3-small` is 1536;
   `text-embedding-3-large` is 3072.
 - Both spaces use the same model above, because most endpoints do not serve a
   code-specific embedding model. If yours does, point `spaces.code` at it.
@@ -453,9 +567,11 @@ model = "claude-sonnet-4-6"
 Cost scales with how much you use Claude Code, not with the size of your graph:
 one call per qualifying prompt, and one per session end.
 
-**Embeddings** are a separate decision, and a more permanent one — the dimension
-is written into the graph's vector indexes and cannot be changed later without
-starting over. See [config.md](config.md#embed) before switching. The defaults
+**Embeddings** are a separate decision. The dimension is written into the
+graph's vector indexes at `schema init`; changing model or dim later uses
+`muninn reembed` (and `muninn index` for code) rather than wiping the graph.
+Still prefer choosing models carefully before accumulating a large history —
+re-embed rewrites every vector. See [config.md](config.md#embed). The defaults
 (`nomic-embed-text` for prose, a code-specific model for source) are chosen so the
 code space understands identifiers rather than treating them as English.
 
@@ -529,9 +645,11 @@ lines. Hooks are required to exit 0 always, so a hook pointing at a moved or
 deleted binary fails silently — nothing errors, memory just stops working.
 Re-run `muninn install` to repoint them, and restart Claude Code.
 
-**`embed dim vs schema` fails.** You changed embedding models after creating the
-schema. The vector index dimension is fixed at creation; point `[neo4j].uri` at
-a fresh database, or revert the model.
+**`embed dim vs schema` fails** (or doctor reports embed fingerprint drift).
+You changed `embed.spaces.*.dim` or `model` after the graph was built. Run
+`muninn reembed --check`, then `muninn reembed --yes` to drop/recreate vector
+indexes if needed and re-embed memory. For code vectors, run `muninn index` on
+each repo afterwards. Or revert config to the previous model/dim.
 
 **macOS: "cannot be opened because the developer cannot be verified".** See the
 quarantine note under [Quick start](#quick-start) → Manual install.
@@ -543,13 +661,15 @@ floor. Debian 12+, Ubuntu 22.04+ or RHEL 9+ are required.
 
 ## Roadmap
 
-Direction, not a schedule. Several of these already exist in early form
-(`muninn serve`, tenant scoping, management UI at `/ui`); the work is to make
-them production-shaped and easy to adopt.
+Direction, not a schedule. Recently closed: **`muninn reembed`** (model/dim
+drift without wiping the graph) and **self-host serve as a host service**
+(systemd / launchd — see [HTTP server](#http-server-optional)).
 
-- **Server memory for deployed agents** — use muninn as the memory backend for
-  agents that do not live on a developer laptop (workers, fleets, CI), with
-  auth and ops guidance to match.
+Still open — plumbing exists in early form; the work is production shape and
+easy adoption:
+
+- **Server memory for deployed agents** — fleets, CI, and workers beyond a
+  single laptop (self-host serve + client mode already work for one machine).
 - **Multi-tenancy** — first-class shared-server deploys: isolation, admin, and
   docs for many tenants on one graph.
 - **Management UI** — deepen the embedded `/ui` for operators (config, graph,
@@ -558,8 +678,6 @@ them production-shaped and easy to adopt.
   coding-agent harnesses beyond the Claude Code reference integration.
 - **Language SDKs** — thin clients over the HTTP API (TypeScript, Python, …)
   so agents do not hand-roll `/v1`.
-- **Re-embed / re-index on model change** — change embedding models without
-  wiping the graph: batch re-embed of memory plus full code re-index.
 
 Bug reports and production needs on the
 [issue tracker](https://github.com/scottlarkin/muninn-release/issues) help
