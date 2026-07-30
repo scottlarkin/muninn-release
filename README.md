@@ -9,6 +9,15 @@
 **Website:** [muninnai.dev](https://muninnai.dev)
 
 [![Latest release](https://img.shields.io/github/v/release/scottlarkin/muninn-release?label=release)](https://github.com/scottlarkin/muninn-release/releases/latest)
+[![Status: alpha](https://img.shields.io/badge/status-alpha-orange)](#alpha)
+
+<a id="alpha"></a>
+> **Alpha.** Usable day to day, but expect rough edges: defaults and config keys
+> can still change between releases, and some releases ask you to run a one-off
+> repair or migration command (release notes always say when). Nothing is
+> reported anywhere and your graph stays on your machine, so the blast radius of
+> a bad release is local — but keep that in mind before depending on it for
+> anything you cannot re-derive.
 
 Agent memory for Claude Code and other coding harnesses. muninn records what
 you and your agent work on, distils durable lessons from it, and injects the
