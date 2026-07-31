@@ -338,6 +338,11 @@ Smoke-test in the foreground (`muninn serve`, then
 `curl -s http://127.0.0.1:8080/v1/health`) before installing a service.
 Keep `auth_mode=none` on loopback only; network exposure needs `api_key` and TLS.
 
+Running it long-term? Ontology curation normally happens only when a session ends,
+which leaves gaps on a server that outlives individual sessions. `serve.ontology_catchup`
+turns on a periodic sweep for tenants that have gone quiet — off by default because it
+costs model calls. See [SERVE.md](SERVE.md#background-curation-optional-off-by-default).
+
 ### HTTP API (`/v1`)
 
 Custom clients and non-CLI harnesses talk to the same surface as client mode.
@@ -447,7 +452,7 @@ latter two.
 `muninn config show` prints the full effective config with secrets redacted.
 `muninn config init` writes a documented starter file.
 
-**[config.md](config.md) documents every setting** — all 162 of them, with defaults.
+**[config.md](config.md) documents every setting** — all 168 of them, with defaults.
 You will not need most of it; start from the examples below.
 
 A project `.muninn.toml` is treated as untrusted — only a small allowlist of

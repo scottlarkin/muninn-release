@@ -200,6 +200,7 @@ The runtime-grown vocabulary of entity and relation types.
 | `ontology.describe_min_instances` | `3` | Min members before the distiller re-describes a minted type. |
 | `ontology.enabled` | `true` | Master switch for entity minting and the type vocabulary. |
 | `ontology.expand_related_types` | `true` | Whether recall follows one hop over type-level RELATED_TO edges to pull in adjacent entities. |
+| `ontology.fold_after` | `7d` | How long a minted type has to earn its instance floor before the distiller folds it onto its parent and deletes it. |
 | `ontology.gc_after` | `14d` | How long a quarantined, still-unused type is kept before deletion. |
 | `ontology.lift_min_support` | `2` | Min instance-pair support before inducing a type-level relation. |
 | `ontology.max_entities_per_turn` | `8` | Max entities minted from a single turn. |
@@ -210,6 +211,7 @@ The runtime-grown vocabulary of entity and relation types.
 | `ontology.min_instances` | `3` | Min instances a minted type needs before it is kept. |
 | `ontology.mint_timeout` | `1m0s` | Deadline for the LLM call that mints entities from a turn. |
 | `ontology.quarantine_after` | `14d` | A type with too few instances is quarantined after this long — kept, but no longer offered for reuse. |
+| `ontology.reconfirm_after` | `14d` | How long an LLM-declined entity-merge pair stays declined before the distiller may ask about it again. |
 | `ontology.reuse_threshold` | `0.9` | Min cosine similarity to reuse an existing schema type instead of minting. |
 | `ontology.taxonomy_depth_max` | `4` | Max SUBTYPE_OF taxonomy depth. |
 
@@ -278,6 +280,9 @@ Endpoint table: `muninn api`. Full narrative: `API.md` in the release tarball (s
 | `serve.job_queue_size` | `256` | Depth of the in-process background job queue used in serve mode instead of detached workers. |
 | `serve.job_workers` | `4` | Number of goroutines draining that job queue. |
 | `serve.max_body_bytes` | `5242880` | Max request body size in bytes (0 = unlimited). |
+| `serve.ontology_catchup` | `false` | Enable a background sweep that curates the ontology for tenants that have gone quiet, instead of only at session end. |
+| `serve.ontology_catchup_idle` | `30m0s` | How long a tenant must be quiet before the background sweep curates it, so curation never competes with live work. |
+| `serve.ontology_catchup_interval` | `6h0m0s` | How often the background ontology sweep looks for quiet tenants. |
 | `serve.preauth_burst` | `100` | Pre-auth burst allowance per client IP for uncached-key lookups. |
 | `serve.preauth_global_burst` | `1000` | Pre-auth burst backstop across all IPs. |
 | `serve.preauth_global_rps` | `500` | Pre-auth sustained req/s backstop across all IPs. |
