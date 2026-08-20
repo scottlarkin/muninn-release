@@ -80,7 +80,7 @@ The quality evals are recorded against `claude-haiku-4-5`, so treat that as the 
 | `llm.model_haiku` | _(empty)_ | Deprecated alias for llm.model (still read for compatibility). |
 | `llm.model_sonnet` | _(empty)_ | Deprecated and unused; there is no second model tier. Prefer llm.model. |
 | `llm.provider` | `anthropic` | LLM provider ("anthropic", "openai", "ollama", or "claude-cli"). |
-| `llm.timeout_api` | `30s` | Provider-level timeout ceiling for hosted API LLM calls. |
+| `llm.timeout_api` | `1m0s` | Provider-level timeout ceiling for one hosted API LLM call (default 60s). Must stay below agent.timeout: it bounds a single call, not a curator run, and a per-call ceiling that ends a multi-turn run discards work the run already committed. |
 | `llm.timeout_local` | `1m0s` | Provider-level timeout ceiling for local LLM calls. |
 
 ## `[recall]`
@@ -130,7 +130,7 @@ What gets injected into a prompt, and how it is ranked. Almost all of this is tu
 | `recall.entity_sim_floor` | `0.6` | Min cosine similarity for an entity seed to enter recall. |
 | `recall.file_context_timeout` | `3s` | Deadline for the PreToolUse file-context hook; it returns empty rather than delaying a tool call. |
 | `recall.forget_sim_threshold` | `0.8` | Min cosine score a node must reach a `forget` phrase to be a deletion candidate. |
-| `recall.inject` | `true` | Whether UserPromptSubmit / PreToolUse hooks inject additionalContext (false = skills-only; record/promote still run). |
+| `recall.inject` | `true` | Whether UserPromptSubmit / PreToolUse hooks inject additionalContext (false = skills-only; record still runs; lessons via curator at session end). |
 | `recall.lesson_sim_threshold` | `0.76` | Min cosine similarity for a lesson to be recalled. |
 | `recall.max_dead_ends` | `3` | Max dead ends (approaches already tried and rejected) surfaced in the dead-end recall section. |
 | `recall.max_entity_lessons` | `5` | Max lessons attached via entity seeds. |
@@ -158,18 +158,17 @@ What gets injected into a prompt, and how it is ranked. Almost all of this is tu
 
 ## `[lesson]`
 
-How durable lessons are promoted, deduplicated and superseded.
+How durable lessons are created (curator / remember), deduplicated and superseded.
 
 | Setting | Default | Description |
 |---|---|---|
 | `lesson.asserted_confidence` | `3` | Seed confidence for an explicitly asserted (`remember`) lesson; kept in the outcome clamp range so it is recallable immediately and resists demotion. |
 | `lesson.dead_end_dedup_threshold` | `0.92` | Cosine threshold above which a new dead end is deduped against an existing dead end (kind-scoped — never against a positive lesson). |
-| `lesson.distill_dedup_threshold` | `0.88` | Cosine threshold for deduping lessons during session distillation. |
-| `lesson.distill_timeout` | `1m30s` | Deadline for the LLM call that distils a whole session. |
+| `lesson.distill_dedup_threshold` | `0.88` | Cosine threshold for deduping curator-created session lessons. |
+| `lesson.distill_timeout` | `1m30s` | Fallback curator/session-end job budget when agent.timeout is unset. |
 | `lesson.global_lessons_path` | _(empty)_ | Optional hand-written markdown file whose lessons are injected verbatim, ahead of learned ones. |
 | `lesson.global_lessons_section` | `Principles & Rules` | Heading within that file to read; everything under it is treated as global lessons. |
-| `lesson.promote_dedup_threshold` | `0.93` | Cosine threshold above which a promoted lesson is deduped against an existing one. |
-| `lesson.promote_timeout` | `1m0s` | Deadline for the LLM call that promotes a prompt into a lesson. |
+| `lesson.promote_timeout` | `1m0s` | Deadline for remember-enrich supersede/LLM work (not a promote pipeline). |
 | `lesson.supersede_candidate_threshold` | `0.6` | Min cosine similarity for a lesson to be a supersede candidate. |
 | `lesson.supersede_proven_floor` | `2` | Confidence at or above which an incumbent lesson is proven and resists being superseded by a less-confident newer lesson; a correction demotes it below the floor and restores replaceability. |
 
@@ -197,8 +196,8 @@ The runtime-grown vocabulary of entity and relation types.
 | Setting | Default | Description |
 |---|---|---|
 | `ontology.auto_reuse_threshold` | `0.97` | Cosine similarity above which an existing type is auto-reused with no LLM check. |
-| `ontology.describe_min_instances` | `3` | Min members before the distiller re-describes a minted type. |
-| `ontology.enabled` | `true` | Master switch for entity minting and the type vocabulary. |
+| `ontology.describe_min_instances` | `3` | Membership floor before the curator offers a type or entity for re-description (list_stale_types / list_stale_entities). |
+| `ontology.enabled` | `true` | Master switch for entity MINTING only (v0.2.0). The curator still curates the ontology at session end; use agent.enabled to stop that. |
 | `ontology.expand_related_types` | `true` | Whether recall follows one hop over type-level RELATED_TO edges to pull in adjacent entities. |
 | `ontology.fold_after` | `7d` | How long a minted type has to earn its instance floor before the distiller folds it onto its parent and deletes it. |
 | `ontology.gc_after` | `14d` | How long a quarantined, still-unused type is kept before deletion. |
@@ -280,9 +279,9 @@ Endpoint table: `muninn api`. Full narrative: `API.md` in the release tarball (s
 | `serve.job_queue_size` | `256` | Depth of the in-process background job queue used in serve mode instead of detached workers. |
 | `serve.job_workers` | `4` | Number of goroutines draining that job queue. |
 | `serve.max_body_bytes` | `5242880` | Max request body size in bytes (0 = unlimited). |
-| `serve.ontology_catchup` | `false` | Enable a background sweep that curates the ontology for tenants that have gone quiet, instead of only at session end. |
-| `serve.ontology_catchup_idle` | `30m0s` | How long a tenant must be quiet before the background sweep curates it, so curation never competes with live work. |
-| `serve.ontology_catchup_interval` | `6h0m0s` | How often the background ontology sweep looks for quiet tenants. |
+| `serve.ontology_catchup` | `true` | Background sweep that runs the graph curator for quiet tenants (default true; skip_if_clean keeps quiet ticks cheap; legacy key name, job is curator). |
+| `serve.ontology_catchup_idle` | `30m0s` | How long a tenant must be quiet before the background curator runs, so curation never competes with live work. |
+| `serve.ontology_catchup_interval` | `6h0m0s` | How often the background curator sweep looks for quiet tenants. |
 | `serve.preauth_burst` | `100` | Pre-auth burst allowance per client IP for uncached-key lookups. |
 | `serve.preauth_global_burst` | `1000` | Pre-auth burst backstop across all IPs. |
 | `serve.preauth_global_rps` | `500` | Pre-auth sustained req/s backstop across all IPs. |
@@ -319,3 +318,18 @@ Reserved for a future licence key. Unused today.
 | Setting | Default | Description |
 |---|---|---|
 | `license.key` | _(empty)_ | Reserved for a future licence key. Unused today; an empty value is fully licensed. |
+
+## `[agent]`
+
+| Setting | Default | Description |
+|---|---|---|
+| `agent.enabled` | `true` | Whether session-end and catchup schedule the graph curator agent. |
+| `agent.force_after` | `7d` | Force a full agent run if last successful done is older than this (default 168h; 0=off). Mitigates candidate-window rot. |
+| `agent.max_concurrent` | `1` | Max concurrent curator jobs on this process (default 1). |
+| `agent.max_iterations` | `24` | Maximum model turns per curator run. |
+| `agent.max_tokens` | `4096` | Maximum model output tokens per curator turn (default 4096). A turn that hits the cap is truncated mid-reply and can lose its tool call, wasting the whole turn at output prices. Raise it if you see truncated turns; it is a spend ceiling, since this multiplies by max_iterations. |
+| `agent.max_tool_calls` | `40` | Maximum tool executions per curator run. |
+| `agent.model` | _(empty)_ | Optional model override for the curator (empty uses llm.model). |
+| `agent.prompt_cache` | `true` | Cache the prompt prefix the curator's tool loop re-sends every turn (default true). Safe on every provider: anthropic marks an explicit breakpoint, openai-compatible and deepseek cache prefixes automatically, ollama reuses its own KV cache. Set false only to isolate a suspected caching problem — the loop then re-pays for the whole transcript each turn. |
+| `agent.skip_if_clean` | `true` | Skip the LLM agent (not the Cypher preflight) when nothing has dirtied the graph, no session is waiting to be summarized, and force_after has not elapsed (default true). Merge/hygiene candidates alone do not wake a clean tenant. |
+| `agent.timeout` | `2m30s` | Wall-clock budget for one curator worker/job. |

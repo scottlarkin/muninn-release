@@ -217,7 +217,32 @@ generated file is commented out with its default shown.
 muninn schema init
 ```
 
-**4. Wire up Claude Code** — optional; skip it if you only want the CLI.
+**4. Recommended: run `muninn serve` and point the CLI at it** (same machine is
+fine). v0.2 curates lessons and ontology via a **session-end agent** plus
+optional **catchup**; a long-lived serve process holds the job queue and
+background sweep. Starting serve alone does **not** switch the CLI — set
+`[server].url`:
+
+```toml
+# ~/.config/muninn/config.toml
+[serve]
+addr = "127.0.0.1:8080"
+auth_mode = "none"            # loopback only
+
+[server]
+url = "http://127.0.0.1:8080" # CLI + hooks use client mode
+```
+
+```sh
+muninn serve   # smoke-test in the foreground; then install a user service
+# see “HTTP server” below for systemd / launchd
+```
+
+**Minimal alternative:** leave `[server].url` unset. The CLI talks to Neo4j
+directly and SessionEnd still runs the curator as a detached worker. You skip
+the daemon, but lose catchup/UI unless you cron `muninn worker curator` yourself.
+
+**5. Wire up Claude Code** — optional; skip it if you only want the CLI.
 
 ```sh
 muninn install
@@ -231,7 +256,7 @@ timestamped backup.
 
 Restart Claude Code afterwards so the hooks load.
 
-**5. Check it.**
+**6. Check it.**
 
 ```sh
 muninn doctor
@@ -318,11 +343,18 @@ checksum-verified and a mismatch aborts without touching what you have.
 Skills are embedded in the binary, so run `muninn install` afterwards to refresh
 the copies in `~/.claude`, then restart Claude Code.
 
-## HTTP server (optional)
+## HTTP server (recommended)
 
-Most installs use the CLI against local Neo4j directly. You can also run
-`muninn serve` as a long-lived HTTP backend (`/v1` + UI at `/ui`) and point the
-CLI at it. Starting serve alone does **not** switch the CLI — set `[server].url`.
+**Recommended layout (including on one laptop):** run a long-lived
+`muninn serve` and set `[server].url` so the CLI and Claude Code hooks use
+**client mode**. Same machine is fine (`http://127.0.0.1:8080`). You get:
+
+- a stable in-process job queue (curator, mint, reindex)
+- **catchup** when sessions crash or go quiet (default on; clean ticks skip Chat)
+- management UI at `/ui`
+- clearer lock/concurrency behaviour than one-shot worker re-execs
+
+Starting serve alone does **not** switch the CLI — set both sections:
 
 ```toml
 # ~/.config/muninn/config.toml
@@ -338,10 +370,24 @@ Smoke-test in the foreground (`muninn serve`, then
 `curl -s http://127.0.0.1:8080/v1/health`) before installing a service.
 Keep `auth_mode=none` on loopback only; network exposure needs `api_key` and TLS.
 
-Running it long-term? Ontology curation normally happens only when a session ends,
-which leaves gaps on a server that outlives individual sessions. `serve.ontology_catchup`
-turns on a periodic sweep for tenants that have gone quiet — off by default because it
-costs model calls. See [SERVE.md](SERVE.md#background-curation-optional-off-by-default).
+**Minimal layout (no daemon):** leave `[server].url` empty. Hooks talk to Neo4j
+directly; SessionEnd still detaches `muninn worker curator`. Use this when you
+want zero always-on process. For background curation without serve, cron
+`muninn worker curator` yourself.
+
+Catchup (`serve.ontology_catchup`, default on) sweeps quiet tenants so curation
+is not only session-end. With `agent.skip_if_clean`, quiet ticks cost almost no
+model calls, and a minute after startup serve also curates any tenant whose last
+completed run is older than the interval — so time the machine spent switched off
+is not silently skipped. See
+[SERVE.md](SERVE.md#recommended-layout-same-machine).
+
+The curator re-sends its transcript on every turn of a run, so the prompt prefix
+is cached where the provider supports it (`agent.prompt_cache`, default on;
+explicit on Anthropic, automatic on OpenAI-compatible and DeepSeek endpoints).
+On a long run that removes most of the repeated input cost. Each run logs
+`input_tokens` / `output_tokens` / `cache_read_tokens`, and the same counters land
+in your own graph.
 
 ### HTTP API (`/v1`)
 
@@ -608,7 +654,9 @@ export MUNINN_RECALL__INJECT=false
 What still happens with `inject = false`:
 
 - prompts and responses are still **recorded**, so the graph keeps growing
-- lessons are still **promoted and distilled** from your sessions
+- lessons are still **distilled by the curator agent** at session end (and
+  serve catchup when you use the recommended serve layout); `muninn remember`
+  still writes immediately
 - `muninn search`, `muninn recall` and every skill still work
 
 What stops: the `UserPromptSubmit` hook no longer returns context, and the
@@ -677,7 +725,7 @@ floor. Debian 12+, Ubuntu 22.04+ or RHEL 9+ are required.
 
 Direction, not a schedule. Recently closed: **`muninn reembed`** (model/dim
 drift without wiping the graph) and **self-host serve as a host service**
-(systemd / launchd — see [HTTP server](#http-server-optional)).
+(systemd / launchd — see [HTTP server (recommended)](#http-server-recommended)).
 
 Still open — plumbing exists in early form; the work is production shape and
 easy adoption:

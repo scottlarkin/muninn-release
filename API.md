@@ -359,7 +359,7 @@ view for the config UI, sorted by `(section, key)`. Each `ConfigField` is:
 are strings like `"4s"`). `description` is `""` for keys without a curated blurb.
 `effective` and `overrides` are unchanged; `fields` is additive.
 
-`PUT /v1/admin/config` — `{ "overrides": { "lesson.promote_dedup_threshold": 0.9 } }`
+`PUT /v1/admin/config` — `{ "overrides": { "lesson.distill_dedup_threshold": 0.9 } }`
 → the fresh `ConfigResponse`. Full-replace of the tenant's overrides (`{}`
 clears them). Only the allowlisted per-tenant tuning knobs may be set — the same
 allowlist a project `.muninn.toml` may set, never endpoints/secrets/paths or
