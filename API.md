@@ -143,11 +143,14 @@ envelope.
 `GET /v1/health` → `200`
 
 ```json
-{ "ok": true, "deps": { "neo4j": true, "embed": true } }
+{ "ok": true, "deps": { "neo4j": true, "embed": true, "jev": true } }
 ```
 
-`ok` is the AND of all dependency probes. Results are served from an
-in-process TTL cache (never probed inline per request).
+`ok` is the AND of all dependency probes **except `jev`**, which is reported
+but never flips it (every jev call site falls back to the LLM). The `jev` key
+is present only when the optional classifier is configured — absent means
+disabled, not down. Results are served from an in-process TTL cache (never
+probed inline per request).
 
 `GET /v1/version` → `200` `{ "version": "1.2.3" }`
 

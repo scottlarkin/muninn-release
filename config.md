@@ -333,3 +333,21 @@ Reserved for a future licence key. Unused today.
 | `agent.prompt_cache` | `true` | Cache the prompt prefix the curator's tool loop re-sends every turn (default true). Safe on every provider: anthropic marks an explicit breakpoint, openai-compatible and deepseek cache prefixes automatically, ollama reuses its own KV cache. Set false only to isolate a suspected caching problem — the loop then re-pays for the whole transcript each turn. |
 | `agent.skip_if_clean` | `true` | Skip the LLM agent (not the Cypher preflight) when nothing has dirtied the graph, no session is waiting to be summarized, and force_after has not elapsed (default true). Merge/hygiene candidates alone do not wake a clean tenant. |
 | `agent.timeout` | `2m30s` | Wall-clock budget for one curator worker/job. |
+
+## `[jev]`
+
+| Setting | Default | Description |
+|---|---|---|
+| `jev.api_key` | `env:TYPESAFE_API_KEY` | TypeSafe API key (literal, env:VAR, or file:path); redacted in responses. An empty key disables jev even when enabled. |
+| `jev.base_url` | `https://api.typesafe.ai/v1/systemone` | TypeSafe System One endpoint. |
+| `jev.correction_yes` | `0.9` | Probability at or above which jev's correction verdict is taken, for Stop-hook correction detection only. Stricter than jev.same_yes (and never allowed below it): a false correction permanently demotes every lesson the turn recalled. |
+| `jev.enabled` | `false` | Consult the TypeSafe "System One" classifier for small yes/no, closed-choice and rubric judgements. Off by default; every call site falls back to the LLM path. |
+| `jev.lesson` | `true` | Use jev for lesson supersede adjudication (only when jev.enabled). |
+| `jev.min_confidence` | `0.5` | Confidence a closed-choice jev answer must reach to be taken; below it the caller falls back to the LLM. |
+| `jev.model` | `jev-latest` | Jev model id ("jev-latest", or a pinned version such as "jev-1.13.0"). |
+| `jev.ontology` | `true` | Use jev for ontology same/different and parent-type decisions (only when jev.enabled). |
+| `jev.outcome` | `true` | Use jev for correction detection when the regex pre-pass misses (only when jev.enabled). |
+| `jev.recall` | `true` | Use jev for the recall distiller's relevance grading (only when jev.enabled). |
+| `jev.same_no` | `0.15` | Probability at or below which a yes/no jev answer is taken as no. Between this and jev.same_yes the answer is uncertain and the caller falls back to the LLM. |
+| `jev.same_yes` | `0.75` | Probability at or above which a yes/no jev answer is taken as yes. The 0.75 default is a measured floor, not a guess: jev's same-entity probability ceilings at ~0.85 even for literal duplicates, so 0.85 admitted 1 of 10,647 candidate pairs on a 32.5k-entity graph and silently disabled the screen. |
+| `jev.timeout` | `3s` | Per-request timeout for one jev call. Deliberately tight: it bounds the UserPromptSubmit hot path, and a slow jev is abandoned to the LLM fallback rather than waited on. |

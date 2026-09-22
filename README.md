@@ -306,6 +306,9 @@ more while it runs, which is what pushes the fully-local column up.
 Mixing is normal — a local graph with a hosted LLM is a good default, since the
 graph holds your memory and the LLM only sees individual prompts.
 
+The optional [Jev classifier](#jev-optional-classifier) is a fourth endpoint,
+off by default — the "nothing leaves" column above assumes it stays off.
+
 ## Using it
 
 With Claude Code, recall is automatic — the hooks handle it, and the skills give
@@ -498,8 +501,8 @@ latter two.
 `muninn config show` prints the full effective config with secrets redacted.
 `muninn config init` writes a documented starter file.
 
-**[config.md](config.md) documents every setting** — all 168 of them, with defaults.
-You will not need most of it; start from the examples below.
+**[config.md](config.md) documents every setting**, with defaults. You will not
+need most of it; start from the examples below.
 
 A project `.muninn.toml` is treated as untrusted — only a small allowlist of
 tuning keys is honoured from it, never credentials or endpoints, so cloning a
@@ -635,6 +638,59 @@ re-embed rewrites every vector. See [config.md](config.md#embed). The defaults
 (`nomic-embed-text` for prose, a code-specific model for source) are chosen so the
 code space understands identifiers rather than treating them as English.
 
+### Jev (optional classifier)
+
+Most of what muninn asks a model is not a writing task. Is this recalled memory
+relevant to what you just asked (`recall`)? Are these two entities, or these two
+schema types, the same thing (`ontology`)? Does this new lesson replace an older
+one (`lesson`)? Was that message a correction (`outcome`)?
+[TypeSafe](https://typesafe.ai)'s **Jev** ("System One") is a small,
+non-generative model built for exactly those: it returns a probability, a pick
+from a list, or a score, never prose. Pointing muninn at it makes those
+judgements faster and cheaper than a round trip to your LLM.
+
+It is **off by default** and needs your own TypeSafe key. Turning it on sends
+text to a third party — see [Privacy](#privacy) for exactly what.
+
+```toml
+[jev]
+enabled = false
+api_key = "env:TYPESAFE_API_KEY"                  # literal, env:VAR, or file:path
+base_url = "https://api.typesafe.ai/v1/systemone"
+model = "jev-latest"                              # or a pin, e.g. "jev-1.13.0"
+timeout = "3s"                                    # per call; bounds the prompt hot path
+same_yes = 0.75                                   # at or above this, yes
+same_no = 0.15                                    # at or below this, no; between, your LLM decides
+correction_yes = 0.9                              # stricter band, correction detection only
+min_confidence = 0.5                              # floor for a pick-one answer
+recall = true                                     # per-area switches, only when enabled
+ontology = true
+lesson = true
+outcome = true
+```
+
+**Every one of those judgements falls back to whatever decided it before** — on
+an error, a timeout, or an answer that lands between `same_no` and `same_yes`.
+For most that means your own LLM; spotting a correction falls back to the
+pattern list muninn has always used, which never involved a model. So no key, a
+wrong key, or a TypeSafe outage degrades to exactly the behaviour you had
+before, never to a silent "no". `muninn health` reports `jev: up`, `down` or
+`disabled`.
+
+Two operator commands come with it, both against a local graph rather than a
+server:
+
+```sh
+muninn jev audit                # read-only sweep; writes a JSON + markdown report
+muninn jev apply report.json    # replay that report's verdicts; dry run by default
+```
+
+`audit` asks Jev about every candidate judgement in your graph — duplicate
+entities, synonym types, parentless types, vague and superseded lessons — and
+writes down what it thinks should be merged or cleaned up. `apply` replays those
+verdicts through the same guarded merge paths the curator uses, and prints the
+plan without touching anything until you pass `--dry-run=false`.
+
 ### Turning off auto-recall in Claude Code
 
 muninn injects relevant memory into every prompt by default. To keep it learning
@@ -682,13 +738,33 @@ something else. Unlike `inject = false`, this stops the graph growing too.
 - Prompts and completions go only to the endpoints you configure. Embeddings
   default to local Ollama; the LLM defaults to Anthropic (or whatever you pick
   at install). Fully local is available.
+- **The optional [Jev classifier](#jev-optional-classifier) is the exception,
+  and it is off by default.** While `jev.enabled` is `false` — the default —
+  nothing is sent to TypeSafe and no key is read. Enable it and muninn sends
+  TypeSafe the text behind each judgement it asks about:
+  - **Recall** — the prompt you just typed, together with the recall context
+    assembled for it: past prompts and response summaries, lessons, dead ends,
+    entity lines, and code locations (paths, symbol names and summaries — never
+    the contents of your files).
+  - **Entities and types** — entity names, their types and summaries; schema
+    type names and descriptions.
+  - **Lessons** — the text of a new lesson and of the existing lessons it might
+    replace.
+  - **Corrections** — the text of the message being judged.
+
+  In normal use each call carries only the items behind that one judgement, and
+  the per-area switches (`jev.recall`, `jev.ontology`, `jev.lesson`,
+  `jev.outcome`) narrow it further to the paths you want. `muninn jev audit` is
+  the deliberate exception: it is a whole-graph sweep, so over one run most of
+  your entity names and summaries, every schema type, and every lesson are sent.
+  Run it when you want that trade, not by habit.
 - Usage counters (token spend, request kinds) are written into your own graph,
   visible only to you.
 - There is no analytics, no automatic update check, no crash reporting, and no
   background phone-home. `muninn upgrade` only contacts the release server when
   you run it.
-- The one recurring paid outbound call, an optional LLM liveness probe, is off
-  by default.
+- Apart from Jev above, the one recurring paid outbound call is an optional LLM
+  liveness probe, and that is off by default too.
 
 ## Troubleshooting
 

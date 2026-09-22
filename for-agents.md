@@ -20,6 +20,11 @@ consent for each, and skip it rather than guess:
 
 Do not run the installer with `--yes` unless the user has said yes to all three.
 
+A generated config also carries a `[jev]` section for the optional classifier.
+It is disabled by default and installing does not touch it. Leave it that way:
+enabling it sends memory text to a third-party API and needs the user's own key,
+so it is their decision to make later, not part of an install.
+
 ## Fast path
 
 ```sh
